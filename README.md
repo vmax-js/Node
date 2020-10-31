@@ -1,178 +1,100 @@
 # Node
 
-## 文件io
+## 文件流
  
-- fs.readFile() 读取文件内容
-```js
-    const fs = require('fs');
-    const path = require('path');
+### 什么是流
+流是指数据的流动，数据从一个地方缓缓的流动到另一个地方
 
-    const filename = path.resolve(__dirname, './text/a.txt');
-    // fs.readFile(filename,(err,content)=>{
-    //     console.log(content.toString('utf-8'));
-    // })
+- 可读流：readable
+数据从源头流向内存
 
-    // fs.readFile(filename,'utf-8',(err,content)=>{
-    //     console.log(content);
-    // })
+- 可写流：writeable
+数据从内存流向源头
 
-    // fs.readFile(filename, {
-    //     encoding: 'utf-8'
-    // }, (err,content)=>{
-    //     console.log(content);
-    // })
+- 双工流：duplex
+数据即可以从源头流向内存，也可以从内存中流向源头
 
-    // console.log(fs.readFileSync(filename,'utf-8')); //同步
+### 为什么需要流
+- 其他介质和内存数据规模不一样，如磁盘中的数据和内存中的数据大小不一样
 
-    async function test(){
-    const content = await fs.promises.readFile(filename,'utf-8');
-    console.log(content);
-    }
-    test();
-```
-- fs.writeFile() 向文件写入内容
-  - 复制粘贴图片
+- 其他介质和内存数据处理能力不一样，内存是快速的数据，磁盘是缓慢的
+
+### 文件流
+- 什么是文件流
+内存数据和磁盘数据之间的流动
+- 文件流的创建
+  - fs.createReadStream(path[,options])，可读流
+    - 含义：创建一个文件可读流，用于读取文件内容，读到内存的
 ```js
 const fs = require('fs');
 const path = require('path');
-async function copyJpg(){
-    const fromFilename = path.resolve(__dirname,'./text/1.jpg');
-    const contentBuffer = await fs.promises.readFile(fromFilename);
-    const toFilename = path.resolve(__dirname,'./text/1.copy.jpg');
-    await fs.promises.writeFile(toFilename,contentBuffer);
-    console.log('copy success!');
-}
-copyJpg();
-```
-- fs.stat() 获取文件或目录信息,访问目录的话size为0，原因操作系统将目录当做空的文件，里面有个指针记录文件的地址。
-  - isDirectory() 是不是目录
-  - isFile() 是不是文件 
-```js
-const fs = require('fs');
-const path = require('path');
-const filename = path.resolve(__dirname,'./text/a.txt');
-async function test(){
-    const stat = await fs.promises.stat(filename);
-    console.log(stat);
-}
-test();
-/*
-Stats {
-  dev: 16777220,
-  mode: 33188,
-  nlink: 1,
-  uid: 501,
-  gid: 20,
-  rdev: 0,
-  blksize: 4096,
-  ino: 4321131726,
-  size: 81, //文件大小字节数
-  blocks: 8,
-  atimeMs: 1604045246901.927,
-  mtimeMs: 1604045245083.801,
-  ctimeMs: 1604045245083.801,
-  birthtimeMs: 1604045236285.8137,
-  atime: 2020-10-30T08:07:26.902Z, //上次访问时间
-  mtime: 2020-10-30T08:07:25.084Z, //上次文件内容被修改时间
-  ctime: 2020-10-30T08:07:25.084Z, //上次文件状态被修改时间
-  birthtime: 2020-10-30T08:07:16.286Z // 文件创建时间
-}
-*/
-```
-- fs.readdir() 返回目录下一级的文件或者目录
-```js
-const fs = require('fs');
-const path = require('path');
-const dirName = path.resolve(__dirname,'./text');
-async function test(){
-    const dir = await fs.promises.readdir(dirName);
-    console.log(dir);
-}
-test();
-```
-- fs.mkdir() 创建目录,创建文件用writeFile写入空字符串
-```js
-const fs = require('fs');
-const path = require('path');
-const dir = path.resolve(__dirname,'./text/1');
-async function test(){
-    await fs.promises.mkdir(dir);
-    console.log('创建成功');
-}
-test();
-```
-- 读取一个目录中所有的目录和文件
-```js
-const fs = require('fs');
-const path = require('path');
-class File {
-    constructor(filename, name, ext, isFile, size, createTime, updateTime) {
-        this.filename = filename;
-        this.name = name;
-        this.ext = ext;
-        this.isFile = isFile;
-        this.size = size;
-        this.createTime = createTime;
-        this.updateTime = updateTime;
-    }
-    async getContent(isBuffer = false) {
-        if (this.isFile) {
-            // 文件
-            if (isBuffer) {
-                return await fs.promises.readFile(this.filename);
-            }
-            return await fs.promises.readFile(this.filename, 'utf-8');
-        } else {
-            //目录
-            return null;
-        }
 
-    }
-    async getChildren() {
-        if(this.isFile){
-            //不是文件
-            return [];
-        }
-        let child = await fs.promises.readdir(this.filename);
-        child = child.map(name => {
-            const reslut = path.resolve(this.filename,name);
-            return File.getFile(reslut);
-        })
-        // console.log(child);
-        return Promise.all(child);
-    }
-    static async getFile(filename) {
-        const stat = await fs.promises.stat(filename);
-        const name = path.basename(filename);
-        const ext = path.extname(filename);
-        const isFile = stat.isFile();
-        const size = stat.size;
-        const createTime = stat.birthtime;
-        const updateTime = stat.mtime;
-        return new File(filename, name, ext, isFile, size, createTime, updateTime);
-    }
-}
-// async function test() {
-//     const filename = path.resolve(__dirname, './text');
-//     const file = await File.getFile(filename);
-//     // console.log(file);
+const filename = path.resolve(__dirname,'./a.txt');
 
-//     // console.log(await file.getContent(true));
-//     console.log(await file.getChildren());
-// }
-// test();
+const rs = fs.createReadStream(filename,{
+    encoding:'utf-8',//默认buffer
+    //  start: 开始字节
+    //  end: 结束字节
+    highWaterMark: 1,    // 默认一次读64*1024字节，还要看encoding
+    autoClose: true, //默认true 读完自动关闭
+}) // 返回readable的子类ReadStream
 
 
-async function readDir(filename){
-    const file = await File.getFile(filename);
-    return await file.getChildren();
-}
-async function test(){
-    const filename = path.resolve(__dirname,'./text');
-    const res = await readDir(filename);
-    console.log(await res[0].getChildren());
-    // console.log(res);
-}
-test();
+// 事件 rs.on(事件名，处理函数)
+
+// 文件打开事件，文件被打开后触发
+rs.on('open',()=>{
+    console.log('文件打开了');
+})
+
+//文件打开出错
+rs.on('error',()=>{
+    console.log('出错了');
+})
+
+//文件关闭 可以手动关闭 rs.close() 可以自动关闭，文件读完后
+rs.on('close',()=>{
+    console.log('文件关闭')
+})
+
+// 读文件内容 要注册这个事件才会读
+rs.on('data',(chunk)=>{
+    console.log('读到了一部分数据',chunk);
+    rs.pause(); //暂停读取，会触发pause事件
+})
+rs.on('pause',()=>{
+    console.log('暂停了');
+    setTimeout(()=>{
+        rs.resume(); // 恢复读取，会触发resume事件
+    },1000)
+})
+
+rs.on('resume',()=>{
+    console.log('恢复了');
+})
+
+rs.on('end',()=>{
+    console.log('文件读取完毕');
+})
 ```
 
+- 可读流
+- fs.createWriteStreanm(path[,options])  创建一个写入流
+  - path：写入文件路径
+  - options
+    - flags：操作文件的方式
+    - encoding：编码方式
+    - start：起始字节
+    - highWaterMark：每次最多写入的字节数，与encoding无关
+  - 返回：writeable的子类WriteStream
+    - ws.on(事件名，处理函数)
+    - ws.write(data) 
+      - 写入一组数据
+      - data可以是字符串或者Buffer
+      - 返回一个boolean值，true表示写入的通道没有被填满，接下来的数据可以直接写入，不用排队，false表示写入的通道已经被填满，接下来的数据将进入写入队列
+      - 当写入队列清空时，会触发drain事件
+    - ws.end([data]) 
+      - 结束写入，将自动关闭文件
+        - 是否自动关闭取决于autoClose配置
+        - 默认为true
+      - data可选，表示关闭前最后一次写入
