@@ -1,114 +1,178 @@
 # Node
 
-## 基本内置模块
-- os
-
-  - os.EOL  end-of-line marker 换行符 linux:\n window:\r\n
-
-  - os.arch() cpu的架构名
-
-  - os.cpus() cpu信息,返回一个数组，os.cpus().length:几核
-
-  - os.freemem() 剩余内存
-
-  - os.homedir() 用户目录
-
-  - os.hostname() 主机名
-  
-  - os.tmpdir() 操作系统临时目录
-
-- path
-filename 文件的绝对路径
-basename 文件名
-path url中
-
-  - path.basename('sdfsd/sdfdsf/sdf/a.js') ->a.js
-    
-    - 第二个参数为文件扩展名，匹配上了就返回文件名，否则加上后缀名
-    
-    - path.basename('sdfsd/sdfdsf/sdf/a.js','.js') ->a
-    
-    - path.basename('sdfsd/sdfdsf/sdf/a.js','.html') ->a.js
-  
-  - path.sep 分隔符 /
-  
-  - path.delimiter 一块一块的分割符
-  
-  - path.dirname('a/b/c/s.js') -> a/b/c
-  
-  - path.extname('adfs/sdfs/a.py') -> .py
-  
-  - path.join('a','b','c','d.js') -> a/b/c/d.js
-  
-  - path.normalize('a/b/c/../a.js') -> a/b/a.js 规范化路径
-  
-  - path.relative('/data/oran/test/aaa','/data/oran/ima/bbb') -> ../../ima/bbb
-  
-  - path.resolve(__dirname,'./a.js') -> /Users/biaofeng/Desktop/Node/a.js
-
-- url 
+## 文件io
+ 
+- fs.readFile() 读取文件内容
 ```js
-const URL = require('url');
-const url = new URL.URL('http://tan.com:80/a/?t=3&c=5#abc');
-console.log(url);
-console.log(url.searchParams.has('t')); // true
-console.log(url.searchParams.get('t')); // 3
+    const fs = require('fs');
+    const path = require('path');
+
+    const filename = path.resolve(__dirname, './text/a.txt');
+    // fs.readFile(filename,(err,content)=>{
+    //     console.log(content.toString('utf-8'));
+    // })
+
+    // fs.readFile(filename,'utf-8',(err,content)=>{
+    //     console.log(content);
+    // })
+
+    // fs.readFile(filename, {
+    //     encoding: 'utf-8'
+    // }, (err,content)=>{
+    //     console.log(content);
+    // })
+
+    // console.log(fs.readFileSync(filename,'utf-8')); //同步
+
+    async function test(){
+    const content = await fs.promises.readFile(filename,'utf-8');
+    console.log(content);
+    }
+    test();
+```
+- fs.writeFile() 向文件写入内容
+  - 复制粘贴图片
+```js
+const fs = require('fs');
+const path = require('path');
+async function copyJpg(){
+    const fromFilename = path.resolve(__dirname,'./text/1.jpg');
+    const contentBuffer = await fs.promises.readFile(fromFilename);
+    const toFilename = path.resolve(__dirname,'./text/1.copy.jpg');
+    await fs.promises.writeFile(toFilename,contentBuffer);
+    console.log('copy success!');
+}
+copyJpg();
+```
+- fs.stat() 获取文件或目录信息,访问目录的话size为0，原因操作系统将目录当做空的文件，里面有个指针记录文件的地址。
+  - isDirectory() 是不是目录
+  - isFile() 是不是文件 
+```js
+const fs = require('fs');
+const path = require('path');
+const filename = path.resolve(__dirname,'./text/a.txt');
+async function test(){
+    const stat = await fs.promises.stat(filename);
+    console.log(stat);
+}
+test();
 /*
-  URL {
-    href: 'http://tan.com/a/?t=3&c=5#abc',
-    origin: 'http://tan.com',
-    protocol: 'http:',
-    username: '',
-    password: '',
-    host: 'tan.com',
-    hostname: 'tan.com',
-    port: '',
-    pathname: '/a/',
-    search: '?t=3&c=5',
-    searchParams: URLSearchParams { 't' => '3', 'c' => '5' },
-    hash: '#abc'
-  }
- */
+Stats {
+  dev: 16777220,
+  mode: 33188,
+  nlink: 1,
+  uid: 501,
+  gid: 20,
+  rdev: 0,
+  blksize: 4096,
+  ino: 4321131726,
+  size: 81, //文件大小字节数
+  blocks: 8,
+  atimeMs: 1604045246901.927,
+  mtimeMs: 1604045245083.801,
+  ctimeMs: 1604045245083.801,
+  birthtimeMs: 1604045236285.8137,
+  atime: 2020-10-30T08:07:26.902Z, //上次访问时间
+  mtime: 2020-10-30T08:07:25.084Z, //上次文件内容被修改时间
+  ctime: 2020-10-30T08:07:25.084Z, //上次文件状态被修改时间
+  birthtime: 2020-10-30T08:07:16.286Z // 文件创建时间
+}
+*/
+```
+- fs.readdir() 返回目录下一级的文件或者目录
+```js
+const fs = require('fs');
+const path = require('path');
+const dirName = path.resolve(__dirname,'./text');
+async function test(){
+    const dir = await fs.promises.readdir(dirName);
+    console.log(dir);
+}
+test();
+```
+- fs.mkdir() 创建目录,创建文件用writeFile写入空字符串
+```js
+const fs = require('fs');
+const path = require('path');
+const dir = path.resolve(__dirname,'./text/1');
+async function test(){
+    await fs.promises.mkdir(dir);
+    console.log('创建成功');
+}
+test();
+```
+- 读取一个目录中所有的目录和文件
+```js
+const fs = require('fs');
+const path = require('path');
+class File {
+    constructor(filename, name, ext, isFile, size, createTime, updateTime) {
+        this.filename = filename;
+        this.name = name;
+        this.ext = ext;
+        this.isFile = isFile;
+        this.size = size;
+        this.createTime = createTime;
+        this.updateTime = updateTime;
+    }
+    async getContent(isBuffer = false) {
+        if (this.isFile) {
+            // 文件
+            if (isBuffer) {
+                return await fs.promises.readFile(this.filename);
+            }
+            return await fs.promises.readFile(this.filename, 'utf-8');
+        } else {
+            //目录
+            return null;
+        }
+
+    }
+    async getChildren() {
+        if(this.isFile){
+            //不是文件
+            return [];
+        }
+        let child = await fs.promises.readdir(this.filename);
+        child = child.map(name => {
+            const reslut = path.resolve(this.filename,name);
+            return File.getFile(reslut);
+        })
+        // console.log(child);
+        return Promise.all(child);
+    }
+    static async getFile(filename) {
+        const stat = await fs.promises.stat(filename);
+        const name = path.basename(filename);
+        const ext = path.extname(filename);
+        const isFile = stat.isFile();
+        const size = stat.size;
+        const createTime = stat.birthtime;
+        const updateTime = stat.mtime;
+        return new File(filename, name, ext, isFile, size, createTime, updateTime);
+    }
+}
+// async function test() {
+//     const filename = path.resolve(__dirname, './text');
+//     const file = await File.getFile(filename);
+//     // console.log(file);
+
+//     // console.log(await file.getContent(true));
+//     console.log(await file.getChildren());
+// }
+// test();
+
+
+async function readDir(filename){
+    const file = await File.getFile(filename);
+    return await file.getChildren();
+}
+async function test(){
+    const filename = path.resolve(__dirname,'./text');
+    const res = await readDir(filename);
+    console.log(await res[0].getChildren());
+    // console.log(res);
+}
+test();
 ```
 
-- util
-  - util.callbackify() 将异步转化为回调函数
-  ```js
-    async function delay(deration = 1000) {
-    return new Promise(resolve => {
-        setTimeout(() => {
-            resolve(deration);
-        }, deration)
-    })
-    }
-    const callbackDelay = util.callbackify(delay);
-
-    callbackDelay(2000,(err,deration)=>{
-        console.log(deration); 
-    })
-
-
-    delay().then(res=>{
-        console.log(res);
-    })
-  ```
-  - util.promisify() 将回调->异步
-  ```js
-    function delayCallback(duration, callback) {
-    setTimeout(() => {
-        callback(null, duration);
-    }, duration)
-    }
-    var proDelay = util.promisify(delayCallback);
-    (async()=>{
-        const r = await proDelay(1000);
-        console.log(r);
-    })()
-
-    proDelay(500).then(res => {
-        console.log(res);
-    })
-  ```
-   - util.inherits(子类，夫类) 继承
-
-   - util.isDeepStrictEqual(obj1,obj2) 深度严格比较
